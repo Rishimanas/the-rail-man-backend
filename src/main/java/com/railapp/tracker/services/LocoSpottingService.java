@@ -25,15 +25,18 @@ public class LocoSpottingService {
     private final LocomotiveRepository locomotiveRepository;
     private final UserRepository userRepository;
     private final TrainRepository trainRepository;
+    private final LocoMasterRosterService rosterService;
 
     public LocoSpottingService(SpotLogRepository spotLogRepository,
                                LocomotiveRepository locomotiveRepository,
                                UserRepository userRepository,
-                               TrainRepository trainRepository) {
+                               TrainRepository trainRepository,
+                               LocoMasterRosterService rosterService) {
         this.spotLogRepository = spotLogRepository;
         this.locomotiveRepository = locomotiveRepository;
         this.userRepository = userRepository;
         this.trainRepository = trainRepository;
+        this.rosterService = rosterService;
     }
 
     @Transactional
@@ -43,28 +46,32 @@ public class LocoSpottingService {
                     Train newTrain = new Train();
                     newTrain.setTrainNumber(request.getTrainNumber());
                     newTrain.setTrainName("Express " + request.getTrainNumber());
-                    newTrain.setSourceStn(request.getFromStation() != null ? request.getFromStation() : "SRC");
-                    newTrain.setDestStn(request.getToStation() != null ? request.getToStation() : "DEST");
+                    newTrain.setSourceStn(request.getFromStation() != null ? request.getFromStation() : "PURI");
+                    newTrain.setDestStn(request.getToStation() != null ? request.getToStation() : "KRPU");
                     return trainRepository.save(newTrain);
                 });
 
         int locoNo = request.getLocoNumber();
-        String detectedClass = determineLocoClass(locoNo);
-        String detectedShed = determineShedCode(locoNo);
+        LocoMasterRosterService.LocoProfile profile = rosterService.lookup(locoNo);
 
-        // Database me purana galat shed ho toh use instantly correct karke overwrite karein
         Locomotive loco = locomotiveRepository.findById(locoNo)
                 .map(existing -> {
-                    existing.setShedCode(detectedShed);
-                    existing.setLocoClass(detectedClass);
+                    existing.setShedCode(profile.shedCode);
+                    existing.setLocoClass(profile.locoClass);
+                    existing.setSpecialLivery(profile.livery);
+                    existing.setIsPushPull(profile.isPushPull);
+                    existing.setIsConverted(profile.isConverted);
                     return locomotiveRepository.save(existing);
                 })
                 .orElseGet(() -> {
                     Locomotive newLoco = new Locomotive();
                     newLoco.setLocoNumber(locoNo);
-                    newLoco.setLocoClass(detectedClass);
-                    newLoco.setShedCode(detectedShed);
-                    newLoco.setTractionType(detectedClass.startsWith("WD") ? "DIESEL" : "ELECTRIC");
+                    newLoco.setLocoClass(profile.locoClass);
+                    newLoco.setShedCode(profile.shedCode);
+                    newLoco.setSpecialLivery(profile.livery);
+                    newLoco.setIsPushPull(profile.isPushPull);
+                    newLoco.setIsConverted(profile.isConverted);
+                    newLoco.setTractionType(profile.locoClass.startsWith("WD") ? "DIESEL" : "ELECTRIC");
                     newLoco.setStatus("IN_SERVICE");
                     return locomotiveRepository.save(newLoco);
                 });
@@ -123,59 +130,19 @@ public class LocoSpottingService {
         List<LocoSpottingLog> logs = spotLogRepository.findRecentSpotsByTrain(trainNumber, oneWeekAgo);
         List<LocoSpotResponseDto> dtos = new ArrayList<>();
         for (LocoSpottingLog log : logs) {
-            // Read time par bhi agar DB me purana shed SRC pada ho toh auto-repair karein
             if (log.getLocomotive() != null) {
                 int num = log.getLocomotive().getLocoNumber();
-                String correctShed = determineShedCode(num);
-                String correctClass = determineLocoClass(num);
-                if (!correctShed.equals(log.getLocomotive().getShedCode())) {
-                    log.getLocomotive().setShedCode(correctShed);
-                    log.getLocomotive().setLocoClass(correctClass);
-                    locomotiveRepository.save(log.getLocomotive());
-                }
+                LocoMasterRosterService.LocoProfile p = rosterService.lookup(num);
+                log.getLocomotive().setShedCode(p.shedCode);
+                log.getLocomotive().setLocoClass(p.locoClass);
+                log.getLocomotive().setSpecialLivery(p.livery);
+                log.getLocomotive().setIsPushPull(p.isPushPull);
+                log.getLocomotive().setIsConverted(p.isConverted);
+                locomotiveRepository.save(log.getLocomotive());
             }
             dtos.add(mapToDto(log));
         }
         return dtos;
-    }
-
-    private String determineLocoClass(int locoNo) {
-        if (locoNo >= 30000 && locoNo <= 30800) return "WAP-7";
-        if (locoNo >= 37000 && locoNo <= 39999) return "WAP-7";
-        if (locoNo >= 22200 && locoNo <= 22999) return "WAP-4";
-        if (locoNo >= 30000 && locoNo <= 30200) return "WAP-5";
-        if (locoNo >= 27000 && locoNo <= 28999) return "WAG-7";
-        if (locoNo >= 31000 && locoNo <= 33999) return "WAG-9";
-        if (locoNo >= 41000 && locoNo <= 43999) return "WAG-12B";
-        if (locoNo >= 70000 && locoNo <= 70999) return "WDG-4G";
-        return "WAP-7";
-    }
-
-    private String determineShedCode(int locoNo) {
-        // Angul (ANGL) WAP-7 & WAG-9 range
-        if (locoNo >= 39600 && locoNo <= 39699) return "ANGL";
-        if (locoNo >= 37100 && locoNo <= 37150) return "ANGL";
-
-        // Santragachi (SRC)
-        if (locoNo == 22501 || (locoNo >= 22500 && locoNo <= 22550)) return "SRC";
-        if (locoNo >= 30450 && locoNo <= 30500) return "SRC";
-
-        // Visakhapatnam (VSKP)
-        if (locoNo >= 39200 && locoNo <= 39250) return "VSKP";
-
-        // Bondamunda (BNDM)
-        if (locoNo >= 31800 && locoNo <= 31900) return "BNDM";
-
-        // Lallaguda (LGD)
-        if (locoNo >= 30250 && locoNo <= 30350) return "LGD";
-
-        // Royapuram (RPM)
-        if (locoNo >= 30351 && locoNo <= 30420) return "RPM";
-
-        // Ghaziabad (GZB)
-        if (locoNo >= 30201 && locoNo <= 30240) return "GZB";
-
-        return "ANGL";
     }
 
     private LocoSpotResponseDto mapToDto(LocoSpottingLog log) {
@@ -191,6 +158,8 @@ public class LocoSpottingService {
             dto.setLocoNumber(log.getLocomotive().getLocoNumber());
             dto.setLocoClass(log.getLocomotive().getLocoClass());
             dto.setShedCode(log.getLocomotive().getShedCode());
+            dto.setSpecialLivery(log.getLocomotive().getSpecialLivery());
+            dto.setIsPushPull(log.getLocomotive().getIsPushPull());
         }
         dto.setSpottedAtStation(log.getSpottedAtStation());
         dto.setSpottedTime(log.getSpottedTime());
@@ -201,15 +170,9 @@ public class LocoSpottingService {
 
     private int calculateInitialWeight(User user, String proofImageUrl) {
         int weight = 5;
-        if ("TRUSTED_SPOTTER".equals(user.getBadgeTier())) {
-            weight = 30;
-        } else if ("VERIFIED_RAILFAN".equals(user.getBadgeTier())) {
-            weight = 15;
-        }
-
-        if (proofImageUrl != null && !proofImageUrl.isBlank()) {
-            weight += 15;
-        }
+        if ("TRUSTED_SPOTTER".equals(user.getBadgeTier())) weight = 30;
+        else if ("VERIFIED_RAILFAN".equals(user.getBadgeTier())) weight = 15;
+        if (proofImageUrl != null && !proofImageUrl.isBlank()) weight += 15;
         return weight;
     }
 }

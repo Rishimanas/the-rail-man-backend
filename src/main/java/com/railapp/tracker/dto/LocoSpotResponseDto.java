@@ -13,6 +13,8 @@ public class LocoSpotResponseDto {
     private Integer locoNumber;
     private String locoClass;
     private String shedCode;
+    private String specialLivery;
+    private Boolean isPushPull;
     private String spottedAtStation;
     private OffsetDateTime spottedTime;
     private Integer confidenceWeight;
@@ -36,6 +38,10 @@ public class LocoSpotResponseDto {
     public void setLocoClass(String locoClass) { this.locoClass = locoClass; }
     public String getShedCode() { return shedCode; }
     public void setShedCode(String shedCode) { this.shedCode = shedCode; }
+    public String getSpecialLivery() { return specialLivery; }
+    public void setSpecialLivery(String specialLivery) { this.specialLivery = specialLivery; }
+    public Boolean getIsPushPull() { return isPushPull; }
+    public void setIsPushPull(Boolean isPushPull) { this.isPushPull = isPushPull; }
     public String getSpottedAtStation() { return spottedAtStation; }
     public void setSpottedAtStation(String spottedAtStation) { this.spottedAtStation = spottedAtStation; }
     public OffsetDateTime getSpottedTime() { return spottedTime; }
