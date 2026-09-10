@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -108,10 +109,13 @@ public class LocoSpottingService {
         spot.setLocomotive(loco);
         spot.setSpottedAtStation(request.getSpottedAtStation() != null ? request.getSpottedAtStation() : "ENROUTE");
         
-        // OffsetDateTime type conversion guarantee
-        OffsetDateTime parsedTime = OffsetDateTime.now();
+        OffsetDateTime parsedTime = OffsetDateTime.now(ZoneOffset.UTC);
         if (request.getSpottedTime() != null) {
-            parsedTime = request.getSpottedTime();
+            try {
+                parsedTime = OffsetDateTime.parse(String.valueOf(request.getSpottedTime()));
+            } catch (Exception e) {
+                parsedTime = OffsetDateTime.now(ZoneOffset.UTC);
+            }
         }
         spot.setSpottedTime(parsedTime);
 
