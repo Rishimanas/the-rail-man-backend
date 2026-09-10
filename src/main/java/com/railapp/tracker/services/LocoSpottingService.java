@@ -38,7 +38,6 @@ public class LocoSpottingService {
 
     @Transactional
     public LocoSpotResponseDto submitSpot(SpotSubmissionRequest request) {
-        // 1. Train auto-provision
         Train train = trainRepository.findById(request.getTrainNumber())
                 .orElseGet(() -> {
                     Train newTrain = new Train();
@@ -49,21 +48,33 @@ public class LocoSpottingService {
                     return trainRepository.save(newTrain);
                 });
 
-        // 2. Locomotive auto-provision
-        Locomotive loco = locomotiveRepository.findById(request.getLocoNumber())
+        int locoNo = request.getLocoNumber();
+        String detectedClass = determineLocoClass(locoNo);
+        String detectedShed = determineShedCode(locoNo);
+
+        Locomotive loco = locomotiveRepository.findById(locoNo)
+                .map(existing -> {
+                    if ("SRC".equals(existing.getShedCode()) && !"SRC".equals(detectedShed)) {
+                        existing.setShedCode(detectedShed);
+                        existing.setLocoClass(detectedClass);
+                        return locomotiveRepository.save(existing);
+                    }
+                    return existing;
+                })
                 .orElseGet(() -> {
                     Locomotive newLoco = new Locomotive();
-                    newLoco.setLocoNumber(request.getLocoNumber());
-                    newLoco.setLocoClass("WAP-7");
-                    newLoco.setShedCode("SRC");
-                    newLoco.setTractionType("ELECTRIC");
+                    newLoco.setLocoNumber(locoNo);
+                    newLoco.setLocoClass(detectedClass);
+                    newLoco.setShedCode(detectedShed);
+                    newLoco.setTractionType(detectedClass.startsWith("WD") ? "DIESEL" : "ELECTRIC");
                     newLoco.setStatus("IN_SERVICE");
                     return locomotiveRepository.save(newLoco);
                 });
 
-        // 3. User UUID handle & auto-provision
-        UUID userUuid = request.getSubmittedBy();
-        if (userUuid == null) {
+        UUID userUuid;
+        try {
+            userUuid = UUID.fromString(request.getSubmittedBy());
+        } catch (Exception e) {
             userUuid = UUID.fromString("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11");
         }
 
@@ -110,6 +121,56 @@ public class LocoSpottingService {
             dtos.add(mapToDto(log));
         }
         return dtos;
+    }
+
+    // Pichle 7 dino ka loco spotting record
+    public List<LocoSpotResponseDto> getRecentHistory(String trainNumber) {
+        LocalDate oneWeekAgo = LocalDate.now().minusDays(7);
+        List<LocoSpottingLog> logs = spotLogRepository.findRecentSpotsByTrain(trainNumber, oneWeekAgo);
+        List<LocoSpotResponseDto> dtos = new ArrayList<>();
+        for (LocoSpottingLog log : logs) {
+            dtos.add(mapToDto(log));
+        }
+        return dtos;
+    }
+
+    private String determineLocoClass(int locoNo) {
+        if (locoNo >= 30000 && locoNo <= 30800) return "WAP-7";
+        if (locoNo >= 37000 && locoNo <= 39999) return "WAP-7";
+        if (locoNo >= 22200 && locoNo <= 22999) return "WAP-4";
+        if (locoNo >= 30000 && locoNo <= 30200) return "WAP-5";
+        if (locoNo >= 27000 && locoNo <= 28999) return "WAG-7";
+        if (locoNo >= 31000 && locoNo <= 33999) return "WAG-9";
+        if (locoNo >= 41000 && locoNo <= 43999) return "WAG-12B";
+        if (locoNo >= 70000 && locoNo <= 70999) return "WDG-4G";
+        return "WAP-7";
+    }
+
+    private String determineShedCode(int locoNo) {
+        // Angul (ANGL) series
+        if (locoNo >= 39630 && locoNo <= 39670) return "ANGL";
+        if (locoNo >= 37100 && locoNo <= 37150) return "ANGL";
+
+        // Santragachi (SRC)
+        if (locoNo == 22501 || (locoNo >= 22500 && locoNo <= 22550)) return "SRC";
+        if (locoNo >= 30450 && locoNo <= 30500) return "SRC";
+
+        // Visakhapatnam (VSKP)
+        if (locoNo >= 39200 && locoNo <= 39250) return "VSKP";
+
+        // Bondamunda (BNDM)
+        if (locoNo >= 31800 && locoNo <= 31900) return "BNDM";
+
+        // Lallaguda (LGD)
+        if (locoNo >= 30250 && locoNo <= 30350) return "LGD";
+
+        // Royapuram (RPM)
+        if (locoNo >= 30351 && locoNo <= 30420) return "RPM";
+
+        // Ghaziabad (GZB)
+        if (locoNo >= 30201 && locoNo <= 30240) return "GZB";
+
+        return "ANGL";
     }
 
     private LocoSpotResponseDto mapToDto(LocoSpottingLog log) {

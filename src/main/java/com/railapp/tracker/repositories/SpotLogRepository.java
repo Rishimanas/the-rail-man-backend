@@ -22,4 +22,15 @@ public interface SpotLogRepository extends JpaRepository<LocoSpottingLog, UUID> 
         @Param("trainNumber") String trainNumber,
         @Param("runDate") LocalDate runDate
     );
+
+    // 1-Week Loco History
+    @Query("SELECT s FROM LocoSpottingLog s " +
+           "WHERE s.train.trainNumber = :trainNumber " +
+           "AND s.runDate >= :sinceDate " +
+           "AND s.status IN ('VERIFIED', 'PENDING') " +
+           "ORDER BY s.runDate DESC, s.spottedTime DESC")
+    List<LocoSpottingLog> findRecentSpotsByTrain(
+        @Param("trainNumber") String trainNumber,
+        @Param("sinceDate") LocalDate sinceDate
+    );
 }

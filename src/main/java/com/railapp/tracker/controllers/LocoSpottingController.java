@@ -34,4 +34,10 @@ public class LocoSpottingController {
         List<LocoSpotResponseDto> spots = spottingService.getLiveLocos(trainNumber, runDate);
         return ResponseEntity.ok(spots);
     }
+
+    @GetMapping("/{trainNumber}/history")
+    public ResponseEntity<List<LocoSpotResponseDto>> getRecentHistory(@PathVariable String trainNumber) {
+        List<LocoSpotResponseDto> history = spottingService.getRecentHistory(trainNumber);
+        return ResponseEntity.ok(history);
+    }
 }
