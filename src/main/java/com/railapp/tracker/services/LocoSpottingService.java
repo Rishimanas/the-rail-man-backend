@@ -38,6 +38,7 @@ public class LocoSpottingService {
 
     @Transactional
     public LocoSpotResponseDto submitSpot(SpotSubmissionRequest request) {
+        // 1. Train Auto-Provision
         Train train = trainRepository.findById(request.getTrainNumber())
                 .orElseGet(() -> {
                     Train newTrain = new Train();
@@ -48,6 +49,7 @@ public class LocoSpottingService {
                     return trainRepository.save(newTrain);
                 });
 
+        // 2. Locomotive Auto-Provision
         Locomotive loco = locomotiveRepository.findById(request.getLocoNumber())
                 .orElseGet(() -> {
                     Locomotive newLoco = new Locomotive();
@@ -59,6 +61,7 @@ public class LocoSpottingService {
                     return locomotiveRepository.save(newLoco);
                 });
 
+        // 3. User UUID Parse & Auto-Provision
         UUID userUuid;
         try {
             userUuid = UUID.fromString(request.getSubmittedBy());
@@ -90,7 +93,7 @@ public class LocoSpottingService {
         spot.setLocomotive(loco);
         spot.setSpottedAtStation(request.getSpottedAtStation());
         spot.setSpottedTime(request.getSpottedTime());
-        spot.setSubmittedBy(user.getUserId() != null ? user.getUserId().toString() : request.getSubmittedBy());
+        spot.setSubmittedBy(user.getUserId());
         spot.setProofImageUrl(request.getProofImageUrl());
         spot.setConfidenceWeight(initialWeight);
         spot.setStatus(initialStatus);
