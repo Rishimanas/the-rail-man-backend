@@ -5,12 +5,18 @@ spring:
   application:
     name: rail-tracker-backend
   datasource:
-    url: 
-    username: 
-    password: 
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://ep-rapid-bar-azzsiv75.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        temp:
+          use_jdbc_metadata_defaults: false
     show-sql: false
     open-in-view: false
