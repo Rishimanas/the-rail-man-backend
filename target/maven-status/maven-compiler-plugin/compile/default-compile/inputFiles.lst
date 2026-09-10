@@ -1,0 +1,15 @@
+D:\rail-tracker-app\backend\src\main\java\com\railapp\tracker\controllers\LocoSpottingController.java
+D:\rail-tracker-app\backend\src\main\java\com\railapp\tracker\dto\LocoSpotResponseDto.java
+D:\rail-tracker-app\backend\src\main\java\com\railapp\tracker\dto\SpotSubmissionRequest.java
+D:\rail-tracker-app\backend\src\main\java\com\railapp\tracker\entities\Locomotive.java
+D:\rail-tracker-app\backend\src\main\java\com\railapp\tracker\entities\LocoSpottingLog.java
+D:\rail-tracker-app\backend\src\main\java\com\railapp\tracker\entities\Train.java
+D:\rail-tracker-app\backend\src\main\java\com\railapp\tracker\entities\User.java
+D:\rail-tracker-app\backend\src\main\java\com\railapp\tracker\RailTrackerApplication.java
+D:\rail-tracker-app\backend\src\main\java\com\railapp\tracker\repositories\LocomotiveRepository.java
+D:\rail-tracker-app\backend\src\main\java\com\railapp\tracker\repositories\SpotLogRepository.java
+D:\rail-tracker-app\backend\src\main\java\com\railapp\tracker\repositories\UserRepository.java
+D:\rail-tracker-app\backend\src\main\java\com\railapp\tracker\services\LocoSpottingService.java
+D:\rail-tracker-app\backend\src\main\java\com\railtracker\controller\SpotController.java
+D:\rail-tracker-app\backend\src\main\java\com\railtracker\model\SpottingLog.java
+D:\rail-tracker-app\backend\src\main\java\com\railtracker\repository\SpottingLogRepository.java
