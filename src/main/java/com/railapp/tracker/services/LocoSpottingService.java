@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -23,7 +24,7 @@ import java.util.UUID;
 @Service
 public class LocoSpottingService {
 
-    private static final Logger log = LoggerFactory.getLogger(LocoSpottingService.java);
+    private static final Logger log = LoggerFactory.getLogger(LocoSpottingService.class);
 
     private final SpotLogRepository spotLogRepository;
     private final LocomotiveRepository locomotiveRepository;
@@ -45,83 +46,85 @@ public class LocoSpottingService {
 
     @Transactional
     public LocoSpotResponseDto submitSpot(SpotSubmissionRequest request) {
-        try {
-            Train train = trainRepository.findById(request.getTrainNumber())
-                    .orElseGet(() -> {
-                        Train newTrain = new Train();
-                        newTrain.setTrainNumber(request.getTrainNumber());
-                        newTrain.setTrainName("Express " + request.getTrainNumber());
-                        newTrain.setSourceStn(request.getFromStation() != null ? request.getFromStation() : "SRC");
-                        newTrain.setDestStn(request.getToStation() != null ? request.getToStation() : "DEST");
-                        return trainRepository.save(newTrain);
-                    });
+        Train train = trainRepository.findById(request.getTrainNumber())
+                .orElseGet(() -> {
+                    Train newTrain = new Train();
+                    newTrain.setTrainNumber(request.getTrainNumber());
+                    newTrain.setTrainName("Express " + request.getTrainNumber());
+                    newTrain.setSourceStn(request.getFromStation() != null ? request.getFromStation() : "SRC");
+                    newTrain.setDestStn(request.getToStation() != null ? request.getToStation() : "DEST");
+                    return trainRepository.save(newTrain);
+                });
 
-            int locoNo = request.getLocoNumber();
-            LocoMasterRosterService.LocoProfile profile = rosterService.lookup(locoNo);
+        int locoNo = request.getLocoNumber();
+        LocoMasterRosterService.LocoProfile profile = rosterService.lookup(locoNo);
 
-            Locomotive loco = locomotiveRepository.findById(locoNo)
-                    .map(existing -> {
-                        existing.setShedCode(profile.shedCode);
-                        existing.setLocoClass(profile.locoClass);
-                        existing.setSpecialLivery(profile.livery);
-                        existing.setIsPushPull(profile.isPushPull);
-                        existing.setIsConverted(profile.isConverted);
-                        return locomotiveRepository.save(existing);
-                    })
-                    .orElseGet(() -> {
-                        Locomotive newLoco = new Locomotive();
-                        newLoco.setLocoNumber(locoNo);
-                        newLoco.setLocoClass(profile.locoClass);
-                        newLoco.setShedCode(profile.shedCode);
-                        newLoco.setSpecialLivery(profile.livery);
-                        newLoco.setIsPushPull(profile.isPushPull);
-                        newLoco.setIsConverted(profile.isConverted);
-                        newLoco.setTractionType(profile.locoClass.startsWith("WD") ? "DIESEL" : "ELECTRIC");
-                        newLoco.setStatus("IN_SERVICE");
-                        return locomotiveRepository.save(newLoco);
-                    });
+        Locomotive loco = locomotiveRepository.findById(locoNo)
+                .map(existing -> {
+                    existing.setShedCode(profile.shedCode);
+                    existing.setLocoClass(profile.locoClass);
+                    existing.setSpecialLivery(profile.livery);
+                    existing.setIsPushPull(profile.isPushPull);
+                    existing.setIsConverted(profile.isConverted);
+                    return locomotiveRepository.save(existing);
+                })
+                .orElseGet(() -> {
+                    Locomotive newLoco = new Locomotive();
+                    newLoco.setLocoNumber(locoNo);
+                    newLoco.setLocoClass(profile.locoClass);
+                    newLoco.setShedCode(profile.shedCode);
+                    newLoco.setSpecialLivery(profile.livery);
+                    newLoco.setIsPushPull(profile.isPushPull);
+                    newLoco.setIsConverted(profile.isConverted);
+                    newLoco.setTractionType(profile.locoClass.startsWith("WD") ? "DIESEL" : "ELECTRIC");
+                    newLoco.setStatus("IN_SERVICE");
+                    return locomotiveRepository.save(newLoco);
+                });
 
-            UUID targetUuid = request.getSubmittedBy() != null
-                    ? request.getSubmittedBy()
-                    : UUID.fromString("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11");
+        UUID targetUuid = request.getSubmittedBy() != null
+                ? request.getSubmittedBy()
+                : UUID.fromString("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11");
 
-            User user = userRepository.findById(targetUuid)
-                    .orElseGet(() -> {
-                        User newUser = new User();
-                        newUser.setUserId(targetUuid);
-                        newUser.setUsername("railfan_spotter");
-                        newUser.setTrustScore(10);
-                        newUser.setTotalSpots(0);
-                        newUser.setVerifiedSpots(0);
-                        newUser.setBadgeTier("NOVICE");
-                        return userRepository.save(newUser);
-                    });
+        User user = userRepository.findById(targetUuid)
+                .orElseGet(() -> {
+                    User newUser = new User();
+                    newUser.setUserId(targetUuid);
+                    newUser.setUsername("railfan_spotter");
+                    newUser.setTrustScore(10);
+                    newUser.setTotalSpots(0);
+                    newUser.setVerifiedSpots(0);
+                    newUser.setBadgeTier("NOVICE");
+                    return userRepository.save(newUser);
+                });
 
-            int initialWeight = calculateInitialWeight(user, request.getProofImageUrl());
-            String initialStatus = initialWeight >= 25 ? "VERIFIED" : "PENDING";
+        int initialWeight = calculateInitialWeight(user, request.getProofImageUrl());
+        String initialStatus = initialWeight >= 25 ? "VERIFIED" : "PENDING";
 
-            LocoSpottingLog spot = new LocoSpottingLog();
-            spot.setTrain(train);
-            spot.setRunDate(request.getRunDate());
-            spot.setFromStationCode(request.getFromStation() != null ? request.getFromStation() : "ORIGIN");
-            spot.setToStationCode(request.getToStation() != null ? request.getToStation() : "DEST");
-            spot.setLocomotive(loco);
-            spot.setSpottedAtStation(request.getSpottedAtStation() != null ? request.getSpottedAtStation() : "ENROUTE");
-            spot.setSpottedTime(request.getSpottedTime());
-            spot.setSubmittedBy(user.getUserId());
-            spot.setProofImageUrl(request.getProofImageUrl());
-            spot.setConfidenceWeight(initialWeight);
-            spot.setStatus(initialStatus);
-
-            user.setTotalSpots(user.getTotalSpots() + 1);
-            userRepository.save(user);
-
-            LocoSpottingLog saved = spotLogRepository.save(spot);
-            return mapToDto(saved);
-        } catch (Exception e) {
-            log.error("Fatal error during spot submission: ", e);
-            throw new RuntimeException("Submission failed: " + e.getMessage());
+        LocoSpottingLog spot = new LocoSpottingLog();
+        spot.setTrain(train);
+        spot.setRunDate(request.getRunDate() != null ? request.getRunDate() : LocalDate.now());
+        spot.setFromStationCode(request.getFromStation() != null ? request.getFromStation() : "ORIGIN");
+        spot.setToStationCode(request.getToStation() != null ? request.getToStation() : "DEST");
+        spot.setLocomotive(loco);
+        spot.setSpottedAtStation(request.getSpottedAtStation() != null ? request.getSpottedAtStation() : "ENROUTE");
+        
+        // OffsetDateTime type conversion guarantee
+        OffsetDateTime parsedTime = OffsetDateTime.now();
+        if (request.getSpottedTime() != null) {
+            parsedTime = request.getSpottedTime();
         }
+        spot.setSpottedTime(parsedTime);
+
+        spot.setSubmittedBy(user.getUserId());
+        spot.setProofImageUrl(request.getProofImageUrl());
+        spot.setConfidenceWeight(initialWeight);
+        spot.setStatus(initialStatus);
+
+        user.setTotalSpots(user.getTotalSpots() + 1);
+        userRepository.save(user);
+
+        LocoSpottingLog saved = spotLogRepository.save(spot);
+        return mapToDto(saved);
     }
 
     public List<LocoSpotResponseDto> getLiveLocos(String trainNumber, LocalDate runDate) {
