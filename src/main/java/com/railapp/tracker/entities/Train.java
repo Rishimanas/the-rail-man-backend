@@ -6,16 +6,16 @@ import jakarta.persistence.*;
 @Table(name = "trains")
 public class Train {
     @Id
-    @Column(name = "train_number", length = 10)
+    @Column(name = "train_number", length = 20)
     private String trainNumber;
 
     @Column(name = "train_name", nullable = false, length = 100)
     private String trainName;
 
-    @Column(name = "source_stn", nullable = false, length = 10)
+    @Column(name = "source_stn", nullable = false, length = 50)
     private String sourceStn;
 
-    @Column(name = "dest_stn", nullable = false, length = 10)
+    @Column(name = "dest_stn", nullable = false, length = 50)
     private String destStn;
 
     public Train() {}
