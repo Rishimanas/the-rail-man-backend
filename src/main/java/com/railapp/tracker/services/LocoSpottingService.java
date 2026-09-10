@@ -71,14 +71,10 @@ public class LocoSpottingService {
                     return locomotiveRepository.save(newLoco);
                 });
 
-        UUID userUuid;
-        try {
-            userUuid = UUID.fromString(request.getSubmittedBy());
-        } catch (Exception e) {
-            userUuid = UUID.fromString("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11");
-        }
+        UUID targetUuid = request.getSubmittedBy() != null
+                ? request.getSubmittedBy()
+                : UUID.fromString("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11");
 
-        final UUID targetUuid = userUuid;
         User user = userRepository.findById(targetUuid)
                 .orElseGet(() -> {
                     User newUser = new User();
@@ -102,8 +98,7 @@ public class LocoSpottingService {
         spot.setLocomotive(loco);
         spot.setSpottedAtStation(request.getSpottedAtStation());
         spot.setSpottedTime(request.getSpottedTime());
-        // String conversion fix
-        spot.setSubmittedBy(user.getUserId().toString());
+        spot.setSubmittedBy(user.getUserId());
         spot.setProofImageUrl(request.getProofImageUrl());
         spot.setConfidenceWeight(initialWeight);
         spot.setStatus(initialStatus);
