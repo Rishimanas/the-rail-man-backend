@@ -12,12 +12,12 @@ import java.util.UUID;
 
 @Repository
 public interface SpotLogRepository extends JpaRepository<LocoSpottingLog, UUID> {
-    
-@Query("SELECT s FROM LocoSpottingLog s " +
-        "WHERE s.train.trainNumber = :trainNumber " +
-        "AND s.runDate = :runDate " +
-        "AND s.status = 'VERIFIED' " +
-        "ORDER BY s.spottedTime DESC")
+
+    @Query("SELECT s FROM LocoSpottingLog s " +
+           "WHERE s.train.trainNumber = :trainNumber " +
+           "AND s.runDate = :runDate " +
+           "AND s.status IN ('VERIFIED', 'PENDING') " +
+           "ORDER BY s.confidenceWeight DESC, s.spottedTime DESC")
     List<LocoSpottingLog> findVerifiedSpots(
         @Param("trainNumber") String trainNumber,
         @Param("runDate") LocalDate runDate
