@@ -46,8 +46,8 @@ public class LocoSpottingService {
                     Train newTrain = new Train();
                     newTrain.setTrainNumber(request.getTrainNumber());
                     newTrain.setTrainName("Express " + request.getTrainNumber());
-                    newTrain.setSourceStn(request.getFromStation() != null ? request.getFromStation() : "PURI");
-                    newTrain.setDestStn(request.getToStation() != null ? request.getToStation() : "KRPU");
+                    newTrain.setSourceStn(request.getFromStation() != null ? request.getFromStation() : "HWD");
+                    newTrain.setDestStn(request.getToStation() != null ? request.getToStation() : "SC");
                     return trainRepository.save(newTrain);
                 });
 
@@ -133,12 +133,15 @@ public class LocoSpottingService {
             if (log.getLocomotive() != null) {
                 int num = log.getLocomotive().getLocoNumber();
                 LocoMasterRosterService.LocoProfile p = rosterService.lookup(num);
-                log.getLocomotive().setShedCode(p.shedCode);
-                log.getLocomotive().setLocoClass(p.locoClass);
-                log.getLocomotive().setSpecialLivery(p.livery);
-                log.getLocomotive().setIsPushPull(p.isPushPull);
-                log.getLocomotive().setIsConverted(p.isConverted);
-                locomotiveRepository.save(log.getLocomotive());
+                // Synchronize and heal stored database record
+                if (!p.shedCode.equals(log.getLocomotive().getShedCode()) || !p.locoClass.equals(log.getLocomotive().getLocoClass())) {
+                    log.getLocomotive().setShedCode(p.shedCode);
+                    log.getLocomotive().setLocoClass(p.locoClass);
+                    log.getLocomotive().setSpecialLivery(p.livery);
+                    log.getLocomotive().setIsPushPull(p.isPushPull);
+                    log.getLocomotive().setIsConverted(p.isConverted);
+                    locomotiveRepository.save(log.getLocomotive());
+                }
             }
             dtos.add(mapToDto(log));
         }
