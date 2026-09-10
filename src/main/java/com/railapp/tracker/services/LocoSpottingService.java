@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -46,8 +48,8 @@ public class LocoSpottingService {
                     Train newTrain = new Train();
                     newTrain.setTrainNumber(request.getTrainNumber());
                     newTrain.setTrainName("Express " + request.getTrainNumber());
-                    newTrain.setSourceStn(request.getFromStation() != null ? request.getFromStation() : "HWD");
-                    newTrain.setDestStn(request.getToStation() != null ? request.getToStation() : "SC");
+                    newTrain.setSourceStn(request.getFromStation() != null ? request.getFromStation() : "SRC");
+                    newTrain.setDestStn(request.getToStation() != null ? request.getToStation() : "DEST");
                     return trainRepository.save(newTrain);
                 });
 
@@ -92,17 +94,29 @@ public class LocoSpottingService {
                     return userRepository.save(newUser);
                 });
 
+        // Robust Timestamp Parser
+        OffsetDateTime parsedSpottedTime;
+        try {
+            if (request.getSpottedTime() != null && !request.getSpottedTime().isBlank()) {
+                parsedSpottedTime = OffsetDateTime.parse(request.getSpottedTime());
+            } else {
+                parsedSpottedTime = OffsetDateTime.now();
+            }
+        } catch (Exception e) {
+            parsedSpottedTime = OffsetDateTime.now();
+        }
+
         int initialWeight = calculateInitialWeight(user, request.getProofImageUrl());
         String initialStatus = initialWeight >= 25 ? "VERIFIED" : "PENDING";
 
         LocoSpottingLog spot = new LocoSpottingLog();
         spot.setTrain(train);
-        spot.setRunDate(request.getRunDate());
-        spot.setFromStationCode(request.getFromStation());
-        spot.setToStationCode(request.getToStation());
+        spot.setRunDate(request.getRunDate() != null ? request.getRunDate() : LocalDate.now());
+        spot.setFromStationCode(request.getFromStation() != null ? request.getFromStation() : "SRC");
+        spot.setToStationCode(request.getToStation() != null ? request.getToStation() : "DEST");
         spot.setLocomotive(loco);
         spot.setSpottedAtStation(request.getSpottedAtStation());
-        spot.setSpottedTime(request.getSpottedTime());
+        spot.setSpottedTime(parsedSpottedTime);
         spot.setSubmittedBy(user.getUserId());
         spot.setProofImageUrl(request.getProofImageUrl());
         spot.setConfidenceWeight(initialWeight);
@@ -133,15 +147,12 @@ public class LocoSpottingService {
             if (log.getLocomotive() != null) {
                 int num = log.getLocomotive().getLocoNumber();
                 LocoMasterRosterService.LocoProfile p = rosterService.lookup(num);
-                // Synchronize and heal stored database record
-                if (!p.shedCode.equals(log.getLocomotive().getShedCode()) || !p.locoClass.equals(log.getLocomotive().getLocoClass())) {
-                    log.getLocomotive().setShedCode(p.shedCode);
-                    log.getLocomotive().setLocoClass(p.locoClass);
-                    log.getLocomotive().setSpecialLivery(p.livery);
-                    log.getLocomotive().setIsPushPull(p.isPushPull);
-                    log.getLocomotive().setIsConverted(p.isConverted);
-                    locomotiveRepository.save(log.getLocomotive());
-                }
+                log.getLocomotive().setShedCode(p.shedCode);
+                log.getLocomotive().setLocoClass(p.locoClass);
+                log.getLocomotive().setSpecialLivery(p.livery);
+                log.getLocomotive().setIsPushPull(p.isPushPull);
+                log.getLocomotive().setIsConverted(p.isConverted);
+                locomotiveRepository.save(log.getLocomotive());
             }
             dtos.add(mapToDto(log));
         }

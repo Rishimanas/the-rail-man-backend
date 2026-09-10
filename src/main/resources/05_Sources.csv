@@ -1,0 +1,6 @@
+Source,URL,Use
+Official Indian Railways e-Locos Allotment,https://elocos.railnet.gov.in/Loco_bank/Loco_allotment.aspx,Primary official ground truth for electric loco number/allotment/shed records
+RailRadar Developer API,https://railradar.in/docs,Live crowd-sourced train telemetry GPS coordinates and 30-day running delay records
+RailRadar Live Tracker Engine,https://railradar.in/railradar,Real-time train positioning and station delay monitoring
+IRFCA Locomotive Database,https://irfca.org/locos,Historical fleet rosters locomotive specifications and shed code lineage
+Official e-Locos Special Features,https://elocos.railnet.gov.in/loco_bank/otherSPL.aspx,Commemorative liveries and push-pull/amrit bharat converted units
