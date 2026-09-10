@@ -52,14 +52,12 @@ public class LocoSpottingService {
         String detectedClass = determineLocoClass(locoNo);
         String detectedShed = determineShedCode(locoNo);
 
+        // Database me purana galat shed ho toh use instantly correct karke overwrite karein
         Locomotive loco = locomotiveRepository.findById(locoNo)
                 .map(existing -> {
-                    if ("SRC".equals(existing.getShedCode()) && !"SRC".equals(detectedShed)) {
-                        existing.setShedCode(detectedShed);
-                        existing.setLocoClass(detectedClass);
-                        return locomotiveRepository.save(existing);
-                    }
-                    return existing;
+                    existing.setShedCode(detectedShed);
+                    existing.setLocoClass(detectedClass);
+                    return locomotiveRepository.save(existing);
                 })
                 .orElseGet(() -> {
                     Locomotive newLoco = new Locomotive();
@@ -119,11 +117,23 @@ public class LocoSpottingService {
         return dtos;
     }
 
+    @Transactional
     public List<LocoSpotResponseDto> getRecentHistory(String trainNumber) {
         LocalDate oneWeekAgo = LocalDate.now().minusDays(7);
         List<LocoSpottingLog> logs = spotLogRepository.findRecentSpotsByTrain(trainNumber, oneWeekAgo);
         List<LocoSpotResponseDto> dtos = new ArrayList<>();
         for (LocoSpottingLog log : logs) {
+            // Read time par bhi agar DB me purana shed SRC pada ho toh auto-repair karein
+            if (log.getLocomotive() != null) {
+                int num = log.getLocomotive().getLocoNumber();
+                String correctShed = determineShedCode(num);
+                String correctClass = determineLocoClass(num);
+                if (!correctShed.equals(log.getLocomotive().getShedCode())) {
+                    log.getLocomotive().setShedCode(correctShed);
+                    log.getLocomotive().setLocoClass(correctClass);
+                    locomotiveRepository.save(log.getLocomotive());
+                }
+            }
             dtos.add(mapToDto(log));
         }
         return dtos;
@@ -142,15 +152,29 @@ public class LocoSpottingService {
     }
 
     private String determineShedCode(int locoNo) {
-        if (locoNo >= 39630 && locoNo <= 39670) return "ANGL";
+        // Angul (ANGL) WAP-7 & WAG-9 range
+        if (locoNo >= 39600 && locoNo <= 39699) return "ANGL";
         if (locoNo >= 37100 && locoNo <= 37150) return "ANGL";
+
+        // Santragachi (SRC)
         if (locoNo == 22501 || (locoNo >= 22500 && locoNo <= 22550)) return "SRC";
         if (locoNo >= 30450 && locoNo <= 30500) return "SRC";
+
+        // Visakhapatnam (VSKP)
         if (locoNo >= 39200 && locoNo <= 39250) return "VSKP";
+
+        // Bondamunda (BNDM)
         if (locoNo >= 31800 && locoNo <= 31900) return "BNDM";
+
+        // Lallaguda (LGD)
         if (locoNo >= 30250 && locoNo <= 30350) return "LGD";
+
+        // Royapuram (RPM)
         if (locoNo >= 30351 && locoNo <= 30420) return "RPM";
+
+        // Ghaziabad (GZB)
         if (locoNo >= 30201 && locoNo <= 30240) return "GZB";
+
         return "ANGL";
     }
 
