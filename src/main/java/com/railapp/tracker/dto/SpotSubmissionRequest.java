@@ -1,17 +1,25 @@
 package com.railapp.tracker.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public class SpotSubmissionRequest {
+
     private String trainNumber;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate runDate;
+
     private String fromStation;
     private String toStation;
     private Integer locoNumber;
     private String spottedAtStation;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
     private OffsetDateTime spottedTime;
+
     private UUID submittedBy;
     private String proofImageUrl;
 

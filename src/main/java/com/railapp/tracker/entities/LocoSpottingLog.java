@@ -1,5 +1,6 @@
 package com.railapp.tracker.entities;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -8,6 +9,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "loco_spotting_logs")
 public class LocoSpottingLog {
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "spot_id")
@@ -18,6 +20,7 @@ public class LocoSpottingLog {
     private Train train;
 
     @Column(name = "run_date", nullable = false)
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate runDate;
 
     @Column(name = "from_station_code", nullable = false, length = 10)
@@ -34,6 +37,7 @@ public class LocoSpottingLog {
     private String spottedAtStation;
 
     @Column(name = "spotted_time", nullable = false)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
     private OffsetDateTime spottedTime;
 
     @Column(name = "submitted_by")
