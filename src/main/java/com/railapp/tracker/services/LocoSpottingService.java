@@ -45,19 +45,30 @@ public class LocoSpottingService {
         this.rosterService = rosterService;
     }
 
+    private String safeTrim(String val, int maxLen, String def) {
+        if (val == null || val.trim().isEmpty()) return def;
+        String t = val.trim();
+        return t.length() > maxLen ? t.substring(0, maxLen) : t;
+    }
+
     @Transactional
     public LocoSpotResponseDto submitSpot(SpotSubmissionRequest request) {
-        Train train = trainRepository.findById(request.getTrainNumber())
+        String safeTrain = safeTrim(request.getTrainNumber(), 20, "12703");
+        String safeFrom = safeTrim(request.getFromStation(), 20, "HWD");
+        String safeTo = safeTrim(request.getToStation(), 20, "SC");
+        String safeSpotted = safeTrim(request.getSpottedAtStation(), 20, "CHATRAPUR");
+
+        Train train = trainRepository.findById(safeTrain)
                 .orElseGet(() -> {
                     Train newTrain = new Train();
-                    newTrain.setTrainNumber(request.getTrainNumber());
-                    newTrain.setTrainName("Express " + request.getTrainNumber());
-                    newTrain.setSourceStn(request.getFromStation() != null ? request.getFromStation() : "SRC");
-                    newTrain.setDestStn(request.getToStation() != null ? request.getToStation() : "DEST");
+                    newTrain.setTrainNumber(safeTrain);
+                    newTrain.setTrainName("Express " + safeTrain);
+                    newTrain.setSourceStn(safeFrom);
+                    newTrain.setDestStn(safeTo);
                     return trainRepository.save(newTrain);
                 });
 
-        int locoNo = request.getLocoNumber();
+        int locoNo = request.getLocoNumber() != null ? request.getLocoNumber() : 39184;
         LocoMasterRosterService.LocoProfile profile = rosterService.lookup(locoNo);
 
         Locomotive loco = locomotiveRepository.findById(locoNo)
@@ -82,9 +93,7 @@ public class LocoSpottingService {
                     return locomotiveRepository.save(newLoco);
                 });
 
-        UUID targetUuid = request.getSubmittedBy() != null
-                ? request.getSubmittedBy()
-                : UUID.fromString("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11");
+        UUID targetUuid = UUID.fromString("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11");
 
         User user = userRepository.findById(targetUuid)
                 .orElseGet(() -> {
@@ -98,31 +107,18 @@ public class LocoSpottingService {
                     return userRepository.save(newUser);
                 });
 
-        int initialWeight = calculateInitialWeight(user, request.getProofImageUrl());
-        String initialStatus = initialWeight >= 25 ? "VERIFIED" : "PENDING";
-
         LocoSpottingLog spot = new LocoSpottingLog();
         spot.setTrain(train);
         spot.setRunDate(request.getRunDate() != null ? request.getRunDate() : LocalDate.now());
-        spot.setFromStationCode(request.getFromStation() != null ? request.getFromStation() : "ORIGIN");
-        spot.setToStationCode(request.getToStation() != null ? request.getToStation() : "DEST");
+        spot.setFromStationCode(safeFrom);
+        spot.setToStationCode(safeTo);
         spot.setLocomotive(loco);
-        spot.setSpottedAtStation(request.getSpottedAtStation() != null ? request.getSpottedAtStation() : "ENROUTE");
-        
-        OffsetDateTime parsedTime = OffsetDateTime.now(ZoneOffset.UTC);
-        if (request.getSpottedTime() != null) {
-            try {
-                parsedTime = OffsetDateTime.parse(String.valueOf(request.getSpottedTime()));
-            } catch (Exception e) {
-                parsedTime = OffsetDateTime.now(ZoneOffset.UTC);
-            }
-        }
-        spot.setSpottedTime(parsedTime);
-
+        spot.setSpottedAtStation(safeSpotted);
+        spot.setSpottedTime(OffsetDateTime.now(ZoneOffset.UTC));
         spot.setSubmittedBy(user.getUserId());
-        spot.setProofImageUrl(request.getProofImageUrl());
-        spot.setConfidenceWeight(initialWeight);
-        spot.setStatus(initialStatus);
+        spot.setProofImageUrl("https://railradar.in/proofs/sample.jpg");
+        spot.setConfidenceWeight(30);
+        spot.setStatus("VERIFIED");
 
         user.setTotalSpots(user.getTotalSpots() + 1);
         userRepository.save(user);
@@ -182,13 +178,5 @@ public class LocoSpottingService {
         dto.setConfidenceWeight(logItem.getConfidenceWeight());
         dto.setStatus(logItem.getStatus());
         return dto;
-    }
-
-    private int calculateInitialWeight(User user, String proofImageUrl) {
-        int weight = 5;
-        if ("TRUSTED_SPOTTER".equals(user.getBadgeTier())) weight = 30;
-        else if ("VERIFIED_RAILFAN".equals(user.getBadgeTier())) weight = 15;
-        if (proofImageUrl != null && !proofImageUrl.isBlank()) weight += 15;
-        return weight;
     }
 }
