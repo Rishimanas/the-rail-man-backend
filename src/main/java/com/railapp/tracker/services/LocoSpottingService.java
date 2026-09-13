@@ -113,7 +113,6 @@ public class LocoSpottingService {
         return mapToDto(saved);
     }
 
-    // Replace and refresh stale records with fresh verified spots
     @Transactional
     public List<LocoSpotResponseDto> getRecentHistory(String trainNumber) {
         LocalDate oneWeekAgo = LocalDate.now().minusDays(7);
@@ -124,7 +123,6 @@ public class LocoSpottingService {
             if (logItem.getLocomotive() != null) {
                 int num = logItem.getLocomotive().getLocoNumber();
                 LocoMasterRosterService.LocoProfile p = rosterService.lookup(num);
-                // Fresh override
                 logItem.getLocomotive().setShedCode(p.shedCode);
                 logItem.getLocomotive().setLocoClass(p.locoClass);
                 logItem.getLocomotive().setSpecialLivery(p.livery);
@@ -135,7 +133,6 @@ public class LocoSpottingService {
             dtos.add(mapToDto(logItem));
         }
 
-        // Agar DB me purana data wipe ho ya empty ho, toh fresh verified spot inject karein
         if (dtos.isEmpty()) {
             dtos.add(generateFreshVerifiedSpot(trainNumber));
         }
@@ -146,7 +143,7 @@ public class LocoSpottingService {
     private LocoSpotResponseDto generateFreshVerifiedSpot(String trainNumber) {
         LocoSpotResponseDto dto = new LocoSpotResponseDto();
         dto.setTrainNumber(trainNumber);
-        dto.setRunDate(LocalDate.now().toString());
+        dto.setRunDate(LocalDate.now());
         dto.setStatus("VERIFIED");
         dto.setConfidenceWeight(30);
 
@@ -186,7 +183,7 @@ public class LocoSpottingService {
         LocoSpotResponseDto dto = new LocoSpotResponseDto();
         dto.setSpotId(logItem.getSpotId());
         if (logItem.getTrain() != null) dto.setTrainNumber(logItem.getTrain().getTrainNumber());
-        dto.setRunDate(logItem.getRunDate() != null ? logItem.getRunDate().toString() : LocalDate.now().toString());
+        dto.setRunDate(logItem.getRunDate() != null ? logItem.getRunDate() : LocalDate.now());
         dto.setFromStationCode(logItem.getFromStationCode());
         dto.setToStationCode(logItem.getToStationCode());
         if (logItem.getLocomotive() != null) {
